@@ -1,9 +1,3 @@
 resources:
 - manifests.yaml
 - service.yaml
-
-patches:
-- path: manager_pod_exclusion_patch.yaml
-  target:
-    kind: MutatingWebhookConfiguration
-    name: mutating-webhook-configuration

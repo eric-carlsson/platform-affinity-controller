@@ -16,7 +16,7 @@ manager:
     tag: ""
     pullPolicy: IfNotPresent
 
-  ## Arguments
+  ## Additional arguments
   ##
   args:
     - --leader-elect
@@ -99,6 +99,30 @@ metrics:
 ##
 certManager:
   enable: true
+
+## Platform affinity behavior applied to Pods whose images support the
+## target platform. Mirrors the manager's --affinity-mode, --affinity-weight,
+## --target-arch, and --target-os flags.
+##
+affinity:
+  ## One of "preferred" (non-blocking, biases scheduling) or "required"
+  ## (blocking, restricts scheduling to matching nodes).
+  ##
+  mode: preferred
+
+  ## Weight (1-100) used for preferred-mode node affinity terms.
+  ##
+  weight: 100
+
+  ## Target architecture to prefer or require when every Pod image supports
+  ## it (for example, "amd64" or "arm64"). Leave empty to skip this dimension.
+  ##
+  targetArch: amd64
+
+  ## Target OS to prefer or require when every Pod image supports it (for
+  ## example, "linux" or "windows"). Leave empty to skip this dimension.
+  ##
+  targetOS: linux
 
 ## Webhook server configuration
 ##

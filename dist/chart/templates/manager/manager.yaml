@@ -45,6 +45,18 @@ spec:
         - --metrics-bind-address=0
         {{- end }}
         - --health-probe-bind-address=:8081
+        {{- if .Values.affinity.mode }}
+        - --affinity-mode={{ .Values.affinity.mode }}
+        {{- end }}
+        {{- if .Values.affinity.weight }}
+        - --affinity-weight={{ .Values.affinity.weight }}
+        {{- end }}
+        {{- if .Values.affinity.targetArch }}
+        - --target-arch={{ .Values.affinity.targetArch }}
+        {{- end }}
+        {{- if .Values.affinity.targetOS }}
+        - --target-os={{ .Values.affinity.targetOS }}
+        {{- end }}
         {{- range .Values.manager.args }}
         - {{ . }}
         {{- end }}
