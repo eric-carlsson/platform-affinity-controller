@@ -27,9 +27,7 @@ import (
 )
 
 var _ = Describe("Pod Webhook", func() {
-	var (
-		defaulter PodCustomDefaulter
-	)
+	var defaulter PodCustomDefaulter
 
 	BeforeEach(func() {
 		defaulter = PodCustomDefaulter{
@@ -54,7 +52,7 @@ var _ = Describe("Pod Webhook", func() {
 					InitContainers: []corev1.Container{{Image: "registry.example/init:latest"}},
 					Containers:     []corev1.Container{{Image: "registry.example/app:latest"}},
 					EphemeralContainers: []corev1.EphemeralContainer{{
-						EphemeralContainerCommon: corev1.EphemeralContainerCommon{Image: "registry.example/debug:latest"},
+						Image: "registry.example/debug:latest",
 					}},
 				},
 			}
@@ -158,9 +156,7 @@ var _ = Describe("Pod Webhook", func() {
 
 			Expect(pod.Spec.Affinity.NodeAffinity.PreferredDuringSchedulingIgnoredDuringExecution[0].Weight).To(Equal(int32(42)))
 		})
-
 	})
-
 })
 
 type fakeImagePlatformResolver struct {
