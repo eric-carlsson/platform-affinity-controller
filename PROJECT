@@ -6,8 +6,8 @@ cliVersion: 4.13.1
 domain: github.com
 layout:
 - go.kubebuilder.io/v4
-projectName: arch-affinity-webhook
-repo: github.com/eric-carlsson/arch-affinity-webhook
+projectName: platform-affinity-controller
+repo: github.com/eric-carlsson/platform-affinity-controller
 resources:
 - core: true
   group: core

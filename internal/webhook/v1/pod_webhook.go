@@ -18,6 +18,7 @@ package v1
 
 import (
 	"context"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -29,30 +30,128 @@ import (
 var podlog = logf.Log.WithName("pod-resource")
 
 // SetupPodWebhookWithManager registers the webhook for Pod in the manager.
-func SetupPodWebhookWithManager(mgr ctrl.Manager) error {
+func SetupPodWebhookWithManager(mgr ctrl.Manager, options PodWebhookOptions) error {
 	return ctrl.NewWebhookManagedBy(mgr, &corev1.Pod{}).
-		WithDefaulter(&PodCustomDefaulter{}).
+		WithDefaulter(&PodCustomDefaulter{
+			resolver:       options.Resolver,
+			affinityMode:   options.AffinityMode,
+			affinityWeight: int32(options.AffinityWeight),
+			targetArch:     options.TargetArch,
+			targetOS:       options.TargetOS,
+		}).
 		Complete()
 }
 
-// TODO(user): EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-
-// +kubebuilder:webhook:path=/mutate--v1-pod,mutating=true,failurePolicy=fail,sideEffects=None,groups="",resources=pods,verbs=create;update,versions=v1,name=mpod-v1.kb.io,admissionReviewVersions=v1
-
-// PodCustomDefaulter struct is responsible for setting default values on the custom resource of the
-// Kind Pod when those are created or updated.
-//
-// NOTE: The +kubebuilder:object:generate=false marker prevents controller-gen from generating DeepCopy methods,
-// as it is used only for temporary operations and does not need to be deeply copied.
-type PodCustomDefaulter struct {
-	// TODO(user): Add more fields as needed for defaulting
+// PodWebhookOptions configures the Pod mutating webhook.
+type PodWebhookOptions struct {
+	Resolver       ImagePlatformResolver
+	AffinityMode   AffinityMode
+	AffinityWeight int
+	TargetArch     string
+	TargetOS       string
 }
 
-// Default implements webhook.CustomDefaulter so a webhook will be registered for the Kind Pod.
-func (d *PodCustomDefaulter) Default(_ context.Context, obj *corev1.Pod) error {
-	podlog.Info("Defaulting for Pod", "name", obj.GetName())
+// DefaultPodWebhookOptions returns safe defaults for the Pod mutating webhook.
+func DefaultPodWebhookOptions(ctx context.Context) (PodWebhookOptions, error) {
+	resolver, err := NewCachedImagePlatformResolver(ctx, 10*time.Minute, 5*time.Second, 1_000)
+	if err != nil {
+		return PodWebhookOptions{}, err
+	}
 
-	// TODO(user): fill in your defaulting logic.
+	return PodWebhookOptions{
+		Resolver:       resolver,
+		AffinityMode:   AffinityModePreferred,
+		AffinityWeight: 100,
+		TargetArch:     "amd64",
+		TargetOS:       "linux",
+	}, nil
+}
 
+// +kubebuilder:webhook:path=/mutate--v1-pod,mutating=true,failurePolicy=ignore,sideEffects=None,groups="",resources=pods,verbs=create;update,versions=v1,name=mpod-v1.kb.io,admissionReviewVersions=v1
+
+// PodCustomDefaulter mutates Pods whose images all support the target platform.
+type PodCustomDefaulter struct {
+	resolver       ImagePlatformResolver
+	affinityMode   AffinityMode
+	affinityWeight int32
+	targetArch     string
+	targetOS       string
+}
+
+// Default implements webhook.CustomDefaulter. Lookup failures are logged and
+// allowed through unchanged so registry availability never blocks scheduling.
+func (d *PodCustomDefaulter) Default(ctx context.Context, pod *corev1.Pod) error {
+	if d.resolver == nil || (d.targetArch == "" && d.targetOS == "") {
+		podlog.Info("Skipping Pod platform affinity because the webhook is not configured",
+			"name", pod.Name, "namespace", pod.Namespace)
+		return nil
+	}
+
+	images := collectPodImages(pod)
+	if len(images) == 0 {
+		return nil
+	}
+	for _, image := range images {
+		platforms, err := d.resolver.Platforms(ctx, image)
+		if err != nil {
+			podlog.Error(err, "Could not resolve image platforms; leaving Pod unchanged",
+				"name", pod.Name, "namespace", pod.Namespace, "image", image)
+			return nil
+		}
+		if !containsTargetPlatform(platforms, d.targetArch, d.targetOS) {
+			podlog.Info("Leaving Pod unchanged because an image does not support the target platform",
+				"name", pod.Name, "namespace", pod.Namespace, "image", image,
+				"architecture", d.targetArch, "os", d.targetOS)
+			return nil
+		}
+	}
+
+	if addPlatformAffinity(pod, d.affinityMode, d.affinityWeight, d.targetArch, d.targetOS) {
+		podlog.Info("Added Pod platform affinity",
+			"name", pod.Name, "namespace", pod.Namespace,
+			"architecture", d.targetArch, "os", d.targetOS, "mode", d.affinityMode)
+	}
 	return nil
+}
+
+// containsTargetPlatform reports whether any resolved platform satisfies the
+// configured target architecture and OS. An empty target value matches any
+// platform value for that dimension.
+func containsTargetPlatform(platforms []Platform, targetArch, targetOS string) bool {
+	for _, platform := range platforms {
+		if targetArch != "" && platform.Architecture != targetArch {
+			continue
+		}
+		if targetOS != "" && platform.OS != targetOS {
+			continue
+		}
+		return true
+	}
+	return false
+}
+
+func collectPodImages(pod *corev1.Pod) []string {
+	images := make([]string, 0, len(pod.Spec.Containers)+len(pod.Spec.InitContainers)+len(pod.Spec.EphemeralContainers))
+	seen := make(map[string]struct{}, cap(images))
+	for _, container := range pod.Spec.InitContainers {
+		images = appendImage(images, seen, container.Image)
+	}
+	for _, container := range pod.Spec.Containers {
+		images = appendImage(images, seen, container.Image)
+	}
+	for _, container := range pod.Spec.EphemeralContainers {
+		images = appendImage(images, seen, container.Image)
+	}
+	return images
+}
+
+func appendImage(images []string, seen map[string]struct{}, image string) []string {
+	if image == "" {
+		return images
+	}
+	if _, ok := seen[image]; ok {
+		return images
+	}
+	seen[image] = struct{}{}
+	return append(images, image)
 }

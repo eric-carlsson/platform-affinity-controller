@@ -108,7 +108,9 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).NotTo(HaveOccurred())
 
-	err = SetupPodWebhookWithManager(mgr)
+	webhookOptions, err := DefaultPodWebhookOptions(ctx)
+	Expect(err).NotTo(HaveOccurred())
+	err = SetupPodWebhookWithManager(mgr, webhookOptions)
 	Expect(err).NotTo(HaveOccurred())
 
 	// +kubebuilder:scaffold:webhook

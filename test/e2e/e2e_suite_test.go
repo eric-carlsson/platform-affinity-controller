@@ -28,12 +28,12 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/eric-carlsson/arch-affinity-webhook/test/utils"
+	"github.com/eric-carlsson/platform-affinity-controller/test/utils"
 )
 
 var (
 	// managerImage is the manager image to be built and loaded for testing.
-	managerImage = "example.com/arch-affinity-webhook:v0.0.1"
+	managerImage = "example.com/platform-affinity-controller:v0.0.1"
 	// shouldCleanupCertManager tracks whether CertManager was installed by this suite.
 	shouldCleanupCertManager = false
 )
@@ -44,7 +44,7 @@ var (
 // To skip CertManager installation, set: CERT_MANAGER_INSTALL_SKIP=true
 func TestE2E(t *testing.T) {
 	RegisterFailHandler(Fail)
-	_, _ = fmt.Fprintf(GinkgoWriter, "Starting arch-affinity-webhook e2e test suite\n")
+	_, _ = fmt.Fprintf(GinkgoWriter, "Starting platform-affinity-controller e2e test suite\n")
 	RunSpecs(t, "e2e suite")
 }
 

@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"flag"
 	"os"
@@ -35,7 +36,7 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	webhookv1 "github.com/eric-carlsson/arch-affinity-webhook/internal/webhook/v1"
+	webhookv1 "github.com/eric-carlsson/platform-affinity-controller/internal/webhook/v1"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -60,6 +61,11 @@ func main() {
 	var secureMetrics bool
 	var enableHTTP2 bool
 	var tlsOpts []func(*tls.Config)
+	webhookOptions, err := webhookv1.DefaultPodWebhookOptions(context.Background())
+	if err != nil {
+		setupLog.Error(err, "Failed to configure Pod webhook")
+		os.Exit(1)
+	}
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
 		"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
@@ -77,6 +83,13 @@ func main() {
 	flag.StringVar(&metricsCertKey, "metrics-cert-key", "tls.key", "The name of the metrics server key file.")
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
+	flag.Var(&webhookOptions.AffinityMode, "affinity-mode", "Node affinity mode: preferred (non-blocking) or required")
+	flag.IntVar(&webhookOptions.AffinityWeight, "affinity-weight", webhookOptions.AffinityWeight,
+		"Node affinity weight")
+	flag.StringVar(&webhookOptions.TargetArch, "target-arch", webhookOptions.TargetArch,
+		"Target architecture to prefer or require when every Pod image supports it")
+	flag.StringVar(&webhookOptions.TargetOS, "target-os", webhookOptions.TargetOS,
+		"Target OS to prefer or require when every Pod image supports it")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -178,7 +191,7 @@ func main() {
 
 	// nolint:goconst
 	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
-		if err := webhookv1.SetupPodWebhookWithManager(mgr); err != nil {
+		if err := webhookv1.SetupPodWebhookWithManager(mgr, webhookOptions); err != nil {
 			setupLog.Error(err, "Failed to create webhook", "webhook", "Pod")
 			os.Exit(1)
 		}
