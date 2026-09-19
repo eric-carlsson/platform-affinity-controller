@@ -102,7 +102,8 @@ certManager:
 
 ## Platform affinity behavior applied to Pods whose images support the
 ## target platform. Mirrors the manager's --affinity-mode, --affinity-weight,
-## --target-arch, and --target-os flags.
+## --target-arch, and --target-os flags. Both targetArch and targetOS default
+## to empty, which leaves the webhook a no-op until you configure at least one.
 ##
 affinity:
   ## One of "preferred" (non-blocking, biases scheduling) or "required"
@@ -115,14 +116,16 @@ affinity:
   weight: 100
 
   ## Target architecture to prefer or require when every Pod image supports
-  ## it (for example, "amd64" or "arm64"). Leave empty to skip this dimension.
+  ## it (for example, "amd64" or "arm64"). Empty by default; set this (and/or
+  ## targetOS) to activate the webhook.
   ##
-  targetArch: amd64
+  targetArch: ""
 
   ## Target OS to prefer or require when every Pod image supports it (for
-  ## example, "linux" or "windows"). Leave empty to skip this dimension.
+  ## example, "linux" or "windows"). Empty by default; set this (and/or
+  ## targetArch) to activate the webhook.
   ##
-  targetOS: linux
+  targetOS: ""
 
 ## Webhook server configuration
 ##

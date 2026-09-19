@@ -52,6 +52,8 @@ type PodWebhookOptions struct {
 }
 
 // DefaultPodWebhookOptions returns safe defaults for the Pod mutating webhook.
+// TargetArch and TargetOS default to empty, which leaves the webhook a no-op
+// until an operator explicitly configures a target platform.
 func DefaultPodWebhookOptions(ctx context.Context) (PodWebhookOptions, error) {
 	resolver, err := NewCachedImagePlatformResolver(ctx, 10*time.Minute, 5*time.Second, 1_000)
 	if err != nil {
@@ -62,8 +64,6 @@ func DefaultPodWebhookOptions(ctx context.Context) (PodWebhookOptions, error) {
 		Resolver:       resolver,
 		AffinityMode:   AffinityModePreferred,
 		AffinityWeight: 100,
-		TargetArch:     "amd64",
-		TargetOS:       "linux",
 	}, nil
 }
 
