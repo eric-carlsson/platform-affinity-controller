@@ -12,8 +12,8 @@ manager:
   replicas: 1
 
   image:
-    repository: controller
-    tag: latest
+    repository: ghcr.io/eric-carlsson/platform-affinity-controller
+    tag: ""
     pullPolicy: IfNotPresent
 
   ## Arguments
@@ -47,7 +47,7 @@ manager:
     allowPrivilegeEscalation: false
     capabilities:
       drop:
-      - ALL
+        - ALL
     readOnlyRootFilesystem: true
 
   ## Resource limits and requests
@@ -112,4 +112,3 @@ webhook:
 ##
 prometheus:
   enable: false
-
