@@ -17,6 +17,11 @@ webhooks:
       path: /mutate--v1-pod
   failurePolicy: Ignore
   name: mpod-v1.kb.io
+  objectSelector:
+    matchExpressions:
+    - key: platform-affinity-controller.io/webhook-{{ .Release.Namespace }}-{{ .Release.Name }}
+      operator: DoesNotExist
+  reinvocationPolicy: IfNeeded
   rules:
   - apiGroups:
     - ""
