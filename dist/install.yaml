@@ -5,6 +5,7 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/name: platform-affinity-controller
     control-plane: controller-manager
+    platform-affinity-controller.io/webhook-excluded: "true"
   name: platform-affinity-controller-system
 ---
 apiVersion: v1
@@ -322,6 +323,11 @@ webhooks:
       path: /mutate--v1-pod
   failurePolicy: Ignore
   name: mpod-v1.kb.io
+  objectSelector:
+    matchExpressions:
+    - key: platform-affinity-controller.io/webhook-excluded
+      operator: DoesNotExist
+  reinvocationPolicy: IfNeeded
   rules:
   - apiGroups:
     - ""

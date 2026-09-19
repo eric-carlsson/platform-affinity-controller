@@ -52,6 +52,8 @@ type PodWebhookOptions struct {
 }
 
 // DefaultPodWebhookOptions returns safe defaults for the Pod mutating webhook.
+// TargetArch and TargetOS default to empty, which leaves the webhook a no-op
+// until an operator explicitly configures a target platform.
 func DefaultPodWebhookOptions(ctx context.Context) (PodWebhookOptions, error) {
 	resolver, err := NewCachedImagePlatformResolver(ctx, 10*time.Minute, 5*time.Second, 1_000)
 	if err != nil {
@@ -62,12 +64,10 @@ func DefaultPodWebhookOptions(ctx context.Context) (PodWebhookOptions, error) {
 		Resolver:       resolver,
 		AffinityMode:   AffinityModePreferred,
 		AffinityWeight: 100,
-		TargetArch:     "amd64",
-		TargetOS:       "linux",
 	}, nil
 }
 
-// +kubebuilder:webhook:path=/mutate--v1-pod,mutating=true,failurePolicy=ignore,sideEffects=None,groups="",resources=pods,verbs=create;update,versions=v1,name=mpod-v1.kb.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/mutate--v1-pod,mutating=true,failurePolicy=ignore,reinvocationPolicy=IfNeeded,sideEffects=None,groups="",resources=pods,verbs=create;update,versions=v1,name=mpod-v1.kb.io,admissionReviewVersions=v1
 
 // PodCustomDefaulter mutates Pods whose images all support the target platform.
 type PodCustomDefaulter struct {

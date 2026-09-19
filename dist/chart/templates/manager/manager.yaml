@@ -19,12 +19,19 @@ spec:
     metadata:
       annotations:
         kubectl.kubernetes.io/default-container: manager
+        {{- with .Values.manager.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
       labels:
         app.kubernetes.io/name: {{ include "platform-affinity-controller.name" . }}
         helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
         app.kubernetes.io/instance: {{ .Release.Name }}
         app.kubernetes.io/managed-by: {{ .Release.Service }}
+        {{ include "platform-affinity-controller.webhookExclusionLabelKey" . }}: "excluded"
         control-plane: controller-manager
+        {{- with .Values.manager.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
       {{- with .Values.manager.tolerations }}
       tolerations: {{ toYaml . | nindent 10 }}
@@ -44,6 +51,16 @@ spec:
         - --metrics-bind-address=0
         {{- end }}
         - --health-probe-bind-address=:8081
+        {{- if or .Values.affinity.targetArch .Values.affinity.targetOS }}
+        - --affinity-mode={{ .Values.affinity.mode }}
+        - --affinity-weight={{ .Values.affinity.weight }}
+        {{- if .Values.affinity.targetArch }}
+        - --target-arch={{ .Values.affinity.targetArch }}
+        {{- end }}
+        {{- if .Values.affinity.targetOS }}
+        - --target-os={{ .Values.affinity.targetOS }}
+        {{- end }}
+        {{- end }}
         {{- range .Values.manager.args }}
         - {{ . }}
         {{- end }}
@@ -52,7 +69,7 @@ spec:
         {{- end }}
         command:
         - /manager
-        image: "{{ .Values.manager.image.repository }}:{{ .Values.manager.image.tag }}"
+        image: "{{ .Values.manager.image.repository }}:{{ default .Chart.AppVersion .Values.manager.image.tag }}"
         imagePullPolicy: {{ .Values.manager.image.pullPolicy }}
         livenessProbe:
           httpGet:
@@ -95,7 +112,7 @@ spec:
         {{- else }}
         {}
         {{- end }}
-      serviceAccountName: {{ include "platform-affinity-controller.resourceName" (dict "suffix" "controller-manager" "context" $) }}
+      serviceAccountName: {{ include "platform-affinity-controller.serviceAccountName" . }}
       terminationGracePeriodSeconds: 10
       volumes:
       {{- if .Values.certManager.enable }}

@@ -14,5 +14,5 @@ roleRef:
   name: {{ include "platform-affinity-controller.resourceName" (dict "suffix" "leader-election-role" "context" $) }}
 subjects:
 - kind: ServiceAccount
-  name: {{ include "platform-affinity-controller.resourceName" (dict "suffix" "controller-manager" "context" $) }}
+  name: {{ include "platform-affinity-controller.serviceAccountName" . }}
   namespace: {{ .Release.Namespace }}

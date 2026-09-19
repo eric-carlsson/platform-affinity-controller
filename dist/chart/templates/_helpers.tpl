@@ -48,3 +48,26 @@ Dynamically calculates safe truncation to ensure total name length <= 63 chars.
 {{- printf "%s-%s" $fullname $suffix | trunc 63 | trimSuffix "-" }}
 {{- end }}
 {{- end }}
+
+{{/*
+Label key used to mark this release's manager Pod so the mutating webhook can
+exclude it from admission. Hashed because the label name part is limited to
+63 bytes and namespace/release names can be arbitrarily long.
+*/}}
+{{- define "platform-affinity-controller.webhookExclusionLabelKey" -}}
+{{- $hash := printf "%s/%s" .Release.Namespace .Release.Name | sha256sum | trunc 16 }}
+{{- printf "platform-affinity-controller.io/webhook-%s" $hash }}
+{{- end }}
+
+{{/*
+Name of the manager ServiceAccount to use. Uses serviceAccount.name if set;
+otherwise falls back to the chart's default resource name. Used regardless of
+whether the chart creates the ServiceAccount (serviceAccount.create).
+*/}}
+{{- define "platform-affinity-controller.serviceAccountName" -}}
+{{- if .Values.serviceAccount.name }}
+{{- .Values.serviceAccount.name }}
+{{- else }}
+{{- include "platform-affinity-controller.resourceName" (dict "suffix" "controller-manager" "context" .) }}
+{{- end }}
+{{- end }}

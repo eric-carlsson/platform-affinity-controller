@@ -12,11 +12,11 @@ manager:
   replicas: 1
 
   image:
-    repository: controller
-    tag: latest
+    repository: ghcr.io/eric-carlsson/platform-affinity-controller
+    tag: ""
     pullPolicy: IfNotPresent
 
-  ## Arguments
+  ## Additional arguments
   ##
   args:
     - --leader-elect
@@ -47,7 +47,7 @@ manager:
     allowPrivilegeEscalation: false
     capabilities:
       drop:
-      - ALL
+        - ALL
     readOnlyRootFilesystem: true
 
   ## Resource limits and requests
@@ -71,6 +71,36 @@ manager:
   ## Manager pod's tolerations
   ##
   tolerations: []
+
+  ## Additional labels for the manager Pod.
+  podLabels: {}
+
+  ## Additional annotations for the manager Pod.
+  ##
+  podAnnotations: {}
+
+## Manager ServiceAccount configuration
+##
+serviceAccount:
+  ## Create the manager ServiceAccount. Set to false to use an existing
+  ## ServiceAccount (see name below) instead.
+  ##
+  create: true
+
+  ## Name of the manager ServiceAccount. If not set and create is true, a
+  ## name is generated using the chart's fullname template. If not set and
+  ## create is false, the generated name is used as an existing ServiceAccount
+  ## reference.
+  ##
+  name: ""
+
+  ## Additional labels for the manager ServiceAccount.
+  ##
+  labels: {}
+
+  ## Additional annotations for the manager ServiceAccount.
+  ##
+  annotations: {}
 
 ## Helper RBAC roles for managing custom resources
 ##
@@ -100,6 +130,33 @@ metrics:
 certManager:
   enable: true
 
+## Platform affinity behavior applied to Pods whose images support the
+## target platform. Mirrors the manager's --affinity-mode, --affinity-weight,
+## --target-arch, and --target-os flags. Both targetArch and targetOS default
+## to empty, which leaves the webhook a no-op until you configure at least one.
+##
+affinity:
+  ## One of "preferred" (non-blocking, biases scheduling) or "required"
+  ## (blocking, restricts scheduling to matching nodes).
+  ##
+  mode: preferred
+
+  ## Weight (1-100) used for preferred-mode node affinity terms.
+  ##
+  weight: 100
+
+  ## Target architecture to prefer or require when every Pod image supports
+  ## it (for example, "amd64" or "arm64"). Empty by default; set this (and/or
+  ## targetOS) to activate the webhook.
+  ##
+  targetArch: ""
+
+  ## Target OS to prefer or require when every Pod image supports it (for
+  ## example, "linux" or "windows"). Empty by default; set this (and/or
+  ## targetArch) to activate the webhook.
+  ##
+  targetOS: ""
+
 ## Webhook server configuration
 ##
 webhook:
@@ -107,9 +164,37 @@ webhook:
   # Webhook server port
   port: 9443
 
+  ## How the API server handles unrecognized errors and timeouts.
+  ## One of "Ignore" (fail open, Pods admitted unchanged) or "Fail" (fail closed).
+  ##
+  failurePolicy: Ignore
+
+  ## Restrict which namespaces the webhook applies to. Uses the standard
+  ## Kubernetes LabelSelector shape (matchLabels/matchExpressions). Left empty,
+  ## the webhook applies to all namespaces except the one it fails to reach.
+  ## Example:
+  ## namespaceSelector:
+  ##   matchExpressions:
+  ##   - key: kubernetes.io/metadata.name
+  ##     operator: NotIn
+  ##     values:
+  ##     - kube-system
+  ##
+  namespaceSelector: {}
+
+  ## Restrict which Pods the webhook applies to, in addition to the chart's
+  ## built-in exclusion of its own manager Pod. Uses the standard Kubernetes
+  ## LabelSelector shape (matchLabels/matchExpressions).
+  ## Example:
+  ## objectSelector:
+  ##   matchExpressions:
+  ##   - key: platform-affinity-controller.io/skip
+  ##     operator: DoesNotExist
+  ##
+  objectSelector: {}
+
 ## Prometheus ServiceMonitor for metrics scraping.
 ## Requires prometheus-operator to be installed in the cluster.
 ##
 prometheus:
   enable: false
-

@@ -14,6 +14,10 @@ endif
 # tools. (i.e. podman)
 CONTAINER_TOOL ?= docker
 
+# PLATFORM optionally overrides the platform passed to the container build.
+# Leave it unset to build for Docker's default (the host) platform.
+PLATFORM ?=
+
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
 SHELL = /usr/bin/env bash -o pipefail
@@ -117,28 +121,11 @@ run: manifests generate fmt vet ## Run a controller from your host.
 # More info: https://docs.docker.com/develop/develop-images/build_enhancements/
 .PHONY: docker-build
 docker-build: ## Build docker image with the manager.
-	$(CONTAINER_TOOL) build -t ${IMG} .
+	$(CONTAINER_TOOL) build -t $(IMG) $(if $(strip $(PLATFORM)),--platform $(PLATFORM)) .
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
 	$(CONTAINER_TOOL) push ${IMG}
-
-# PLATFORMS defines the target platforms for the manager image be built to provide support to multiple
-# architectures. (i.e. make docker-buildx IMG=myregistry/mypoperator:0.0.1). To use this option you need to:
-# - be able to use docker buildx. More info: https://docs.docker.com/build/buildx/
-# - have enabled BuildKit. More info: https://docs.docker.com/develop/develop-images/build_enhancements/
-# - be able to push the image to your registry (i.e. if you do not set a valid value via IMG=<myregistry/image:<tag>> then the export will fail)
-# To adequately provide solutions that are compatible with multiple platforms, you should consider using this option.
-PLATFORMS ?= linux/arm64,linux/amd64,linux/s390x,linux/ppc64le
-.PHONY: docker-buildx
-docker-buildx: ## Build and push docker image for the manager for cross-platform support
-	# copy existing Dockerfile and insert --platform=${BUILDPLATFORM} into Dockerfile.cross, and preserve the original Dockerfile
-	sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' Dockerfile > Dockerfile.cross
-	- $(CONTAINER_TOOL) buildx create --name platform-affinity-controller-builder
-	$(CONTAINER_TOOL) buildx use platform-affinity-controller-builder
-	- $(CONTAINER_TOOL) buildx build --push --platform=$(PLATFORMS) --tag ${IMG} -f Dockerfile.cross .
-	- $(CONTAINER_TOOL) buildx rm platform-affinity-controller-builder
-	rm Dockerfile.cross
 
 .PHONY: build-installer
 build-installer: manifests generate kustomize ## Generate a consolidated YAML with CRDs and deployment.
@@ -270,6 +257,12 @@ HELM_NAMESPACE ?= platform-affinity-controller-system
 HELM_RELEASE ?= platform-affinity-controller
 ## Path to the Helm chart directory
 HELM_CHART_DIR ?= dist/chart
+## OCI registry repository to publish the Helm chart to (required)
+HELM_CHART_REGISTRY ?=
+## Optional chart version override used when packaging
+HELM_CHART_VERSION ?=
+## Optional application version override used when packaging
+HELM_CHART_APP_VERSION ?=
 ## Additional arguments to pass to helm commands
 HELM_EXTRA_ARGS ?=
 
@@ -279,6 +272,21 @@ install-helm: ## Install the latest version of Helm.
 		echo "Installing Helm..." && \
 		curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-4 | bash; \
 	}
+
+.PHONY: helm-push
+helm-push: install-helm ## Package and push the Helm chart as an OCI artifact.
+	@package_dir="$$(mktemp -d)"; \
+	trap 'rm -rf "$$package_dir"' EXIT; \
+	[ -n "$(HELM_CHART_REGISTRY)" ] || { \
+		echo "Set HELM_CHART_REGISTRY to an OCI repository (for example, oci://ghcr.io/owner/charts)" >&2; \
+		exit 1; \
+	}; \
+	$(HELM) package "$(HELM_CHART_DIR)" --destination "$$package_dir" \
+		$(if $(strip $(HELM_CHART_VERSION)),--version "$(HELM_CHART_VERSION)") \
+		$(if $(strip $(HELM_CHART_APP_VERSION)),--app-version "$(HELM_CHART_APP_VERSION)"); \
+	set -- "$$package_dir"/*.tgz; \
+	[ -f "$$1" ] || { echo "Could not find packaged Helm chart" >&2; exit 1; }; \
+	$(HELM) push "$$1" "$(HELM_CHART_REGISTRY)"
 
 .PHONY: helm-deploy
 helm-deploy: install-helm ## Deploy manager to the K8s cluster via Helm. Specify an image with IMG.
