@@ -19,7 +19,7 @@ webhooks:
   name: mpod-v1.kb.io
   objectSelector:
     matchExpressions:
-    - key: platform-affinity-controller.io/webhook-{{ .Release.Namespace }}-{{ .Release.Name }}
+    - key: {{ include "platform-affinity-controller.webhookExclusionLabelKey" . }}
       operator: DoesNotExist
   reinvocationPolicy: IfNeeded
   rules:
