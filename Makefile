@@ -184,7 +184,9 @@ KIND ?= kind
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
-GOLANGCI_LINT = $(LOCALBIN)/golangci-lint
+GOLANGCI_LINT_BASE = $(LOCALBIN)/golangci-lint
+GOLANGCI_LINT = $(GOLANGCI_LINT_BASE)
+GOLANGCI_LINT_CUSTOM = $(LOCALBIN)/golangci-lint-custom
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.8.1
@@ -201,6 +203,11 @@ ENVTEST_K8S_VERSION ?= $(shell v='$(call gomodver,k8s.io/api)'; \
   printf '%s\n' "$$v" | sed -E 's/^v?[0-9]+\.([0-9]+).*/1.\1/')
 
 GOLANGCI_LINT_VERSION ?= v2.13.2
+
+ifneq ($(wildcard .custom-gcl.yml),)
+GOLANGCI_LINT = $(GOLANGCI_LINT_CUSTOM)
+endif
+
 .PHONY: kustomize
 kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
 $(KUSTOMIZE): $(LOCALBIN)
@@ -226,13 +233,12 @@ $(ENVTEST): $(LOCALBIN)
 
 .PHONY: golangci-lint
 golangci-lint: $(GOLANGCI_LINT) ## Download golangci-lint locally if necessary.
-$(GOLANGCI_LINT): $(LOCALBIN)
-	$(call go-install-tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/v2/cmd/golangci-lint,$(GOLANGCI_LINT_VERSION))
-	@test -f .custom-gcl.yml && { \
-		echo "Building custom golangci-lint with plugins..." && \
-		$(GOLANGCI_LINT) custom --destination $(LOCALBIN) --name golangci-lint-custom && \
-		mv -f $(LOCALBIN)/golangci-lint-custom $(GOLANGCI_LINT); \
-	} || true
+$(GOLANGCI_LINT_BASE): $(LOCALBIN)
+	$(call go-install-tool,$(GOLANGCI_LINT_BASE),github.com/golangci/golangci-lint/v2/cmd/golangci-lint,$(GOLANGCI_LINT_VERSION))
+
+$(GOLANGCI_LINT_CUSTOM): $(GOLANGCI_LINT_BASE) .custom-gcl.yml
+	@echo "Building custom golangci-lint with plugins..."
+	$(GOLANGCI_LINT_BASE) custom --destination $(LOCALBIN) --name $(notdir $(GOLANGCI_LINT_CUSTOM))
 
 # go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
 # $1 - target path with name of binary
