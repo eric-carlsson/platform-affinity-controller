@@ -107,6 +107,35 @@ webhook:
   # Webhook server port
   port: 9443
 
+  ## How the API server handles unrecognized errors and timeouts.
+  ## One of "Ignore" (fail open, Pods admitted unchanged) or "Fail" (fail closed).
+  ##
+  failurePolicy: Ignore
+
+  ## Restrict which namespaces the webhook applies to. Uses the standard
+  ## Kubernetes LabelSelector shape (matchLabels/matchExpressions). Left empty,
+  ## the webhook applies to all namespaces except the one it fails to reach.
+  ## Example:
+  ## namespaceSelector:
+  ##   matchExpressions:
+  ##   - key: kubernetes.io/metadata.name
+  ##     operator: NotIn
+  ##     values:
+  ##     - kube-system
+  ##
+  namespaceSelector: {}
+
+  ## Restrict which Pods the webhook applies to, in addition to the chart's
+  ## built-in exclusion of its own manager Pod. Uses the standard Kubernetes
+  ## LabelSelector shape (matchLabels/matchExpressions).
+  ## Example:
+  ## objectSelector:
+  ##   matchExpressions:
+  ##   - key: platform-affinity-controller.io/skip
+  ##     operator: DoesNotExist
+  ##
+  objectSelector: {}
+
 ## Prometheus ServiceMonitor for metrics scraping.
 ## Requires prometheus-operator to be installed in the cluster.
 ##

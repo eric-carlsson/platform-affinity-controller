@@ -15,12 +15,23 @@ webhooks:
       name: {{ include "platform-affinity-controller.resourceName" (dict "suffix" "webhook-service" "context" $) }}
       namespace: {{ .Release.Namespace }}
       path: /mutate--v1-pod
-  failurePolicy: Ignore
+  failurePolicy: {{ .Values.webhook.failurePolicy | default "Ignore" }}
   name: mpod-v1.kb.io
+  {{- with .Values.webhook.namespaceSelector }}
+  namespaceSelector:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
   objectSelector:
     matchExpressions:
     - key: {{ include "platform-affinity-controller.webhookExclusionLabelKey" . }}
       operator: DoesNotExist
+    {{- with .Values.webhook.objectSelector.matchExpressions }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with .Values.webhook.objectSelector.matchLabels }}
+    matchLabels:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
   reinvocationPolicy: IfNeeded
   rules:
   - apiGroups:
