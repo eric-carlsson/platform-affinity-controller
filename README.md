@@ -33,6 +33,9 @@ flowchart TB
     podA --> schedA
     schedA -->|schedules| arm64A
     schedA -.->|excluded| amd64A
+
+    classDef excluded stroke-dasharray: 5 5,fill-opacity:0.5,stroke-opacity:0.5,color:#777;
+    class amd64A excluded
   end
 
   subgraph Before["Before: no affinity"]
@@ -43,12 +46,9 @@ flowchart TB
     arm64B["arm64 node"]
 
     podB --> schedB
-    schedB -->|schedules| amd64B
     schedB -->|schedules| arm64B
+    schedB -->|schedules| amd64B
   end
-
-  classDef excluded stroke-dasharray: 5 5,opacity:0.5;
-  class amd64A excluded
 ```
 
 Without the admission controller, the scheduler places the Pod on any node
