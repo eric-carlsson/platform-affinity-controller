@@ -1,3 +1,4 @@
+{{- if .Values.serviceAccount.create }}
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -6,5 +7,13 @@ metadata:
     app.kubernetes.io/name: {{ include "platform-affinity-controller.name" . }}
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
     app.kubernetes.io/instance: {{ .Release.Name }}
-  name: {{ include "platform-affinity-controller.resourceName" (dict "suffix" "controller-manager" "context" $) }}
+    {{- with .Values.serviceAccount.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.serviceAccount.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  name: {{ include "platform-affinity-controller.serviceAccountName" . }}
   namespace: {{ .Release.Namespace }}
+{{- end }}

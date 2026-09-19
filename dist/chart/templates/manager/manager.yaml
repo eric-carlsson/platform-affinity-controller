@@ -19,6 +19,9 @@ spec:
     metadata:
       annotations:
         kubectl.kubernetes.io/default-container: manager
+        {{- with .Values.manager.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
       labels:
         app.kubernetes.io/name: {{ include "platform-affinity-controller.name" . }}
         helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
@@ -26,6 +29,9 @@ spec:
         app.kubernetes.io/managed-by: {{ .Release.Service }}
         {{ include "platform-affinity-controller.webhookExclusionLabelKey" . }}: "excluded"
         control-plane: controller-manager
+        {{- with .Values.manager.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
     spec:
       {{- with .Values.manager.tolerations }}
       tolerations: {{ toYaml . | nindent 10 }}
@@ -106,7 +112,7 @@ spec:
         {{- else }}
         {}
         {{- end }}
-      serviceAccountName: {{ include "platform-affinity-controller.resourceName" (dict "suffix" "controller-manager" "context" $) }}
+      serviceAccountName: {{ include "platform-affinity-controller.serviceAccountName" . }}
       terminationGracePeriodSeconds: 10
       volumes:
       {{- if .Values.certManager.enable }}

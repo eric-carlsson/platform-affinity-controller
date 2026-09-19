@@ -72,6 +72,36 @@ manager:
   ##
   tolerations: []
 
+  ## Additional labels for the manager Pod.
+  podLabels: {}
+
+  ## Additional annotations for the manager Pod.
+  ##
+  podAnnotations: {}
+
+## Manager ServiceAccount configuration
+##
+serviceAccount:
+  ## Create the manager ServiceAccount. Set to false to use an existing
+  ## ServiceAccount (see name below) instead.
+  ##
+  create: true
+
+  ## Name of the manager ServiceAccount. If not set and create is true, a
+  ## name is generated using the chart's fullname template. If not set and
+  ## create is false, the generated name is used as an existing ServiceAccount
+  ## reference.
+  ##
+  name: ""
+
+  ## Additional labels for the manager ServiceAccount.
+  ##
+  labels: {}
+
+  ## Additional annotations for the manager ServiceAccount.
+  ##
+  annotations: {}
+
 ## Helper RBAC roles for managing custom resources
 ##
 rbacHelpers:
