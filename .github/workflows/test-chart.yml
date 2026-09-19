@@ -4,7 +4,11 @@ on:
   push:
     branches:
       - main
+    paths:
+      - dist/chart/*
   pull_request:
+    paths:
+      - dist/chart/*
 
 jobs:
   test-e2e:
